@@ -592,7 +592,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const total = Math.round((subtotal + deliveryFee + tax) * 100) / 100
     const order = await prisma.order.create({
         data: {
-            userId: req.user!.id,
+            userId: process.env.USER_ID as any,
             items: orderItems,
             shippingAddress,
             paymentMethod,
