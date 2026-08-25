@@ -42,7 +42,7 @@
 //     const total = Math.round((subtotal + deliveryFee + tax) * 100) / 100
 //     const order = await prisma.order.create({
 //         data: {
-//             userId: '398c5966-6811-4c96-9b33-9adbd44611fe',
+//             userId: '',
 //             items: orderItems,
 //             shippingAddress,
 //             paymentMethod,
@@ -343,7 +343,7 @@
 //     const total = Math.round((subtotal + deliveryFee + tax) * 100) / 100
 //     const order = await prisma.order.create({
 //         data: {
-//             userId: '398c5966-6811-4c96-9b33-9adbd44611fe',
+//             userId: '',
 //             items: orderItems,
 //             shippingAddress,
 //             paymentMethod,
