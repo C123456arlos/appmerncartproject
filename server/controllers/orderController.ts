@@ -555,10 +555,12 @@ import { inngest } from "../inngest/index.js"
 import Stripe from 'stripe'
 
 export const createOrder = async (req: Request, res: Response) => {
+    try {
     const { items, shippingAddress, paymentMethod } = req.body
     if (!items || items.length === 0) {
         return res.status(400).json({ message: 'no order items' })
     }
+    console.log(items, 'items')
     const productIds = items.map((i: any) => i.product)
     const products = await prisma.product.findMany({ where: { id: { in: productIds } } })
     // type Record<K extends keyof any, T> = { [P in K]: T; }
@@ -566,7 +568,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const productMap: Record<string, (typeof products)[0]> = {}
 
     products.forEach((p: any) => productMap[p.id] = p)
-    console.log(productMap)
+    // console.log(productMap)
     for (const item of items) {
         const product = productMap[item.product]
         if (!product || (product.stock ?? 0) < item.quantity) {
@@ -586,8 +588,6 @@ export const createOrder = async (req: Request, res: Response) => {
         }
     })
     const subtotal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0)
-    console.log(subtotal)
-    console.log(process.env.USER_ID, 'process.env.USER_ID')
     const deliveryFee = subtotal > 20 ? 0 : 1.99
     const tax = Math.round(subtotal * 0.08 * 100) / 100
     const total = Math.round((subtotal + deliveryFee + tax) * 100) / 100
@@ -607,11 +607,12 @@ export const createOrder = async (req: Request, res: Response) => {
     if (paymentMethod === 'card') {
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
         const session = await stripe.checkout.sessions.create({
-                        line_items: [
+             line_items: [
                 {
                     price_data: {
                         currency: 'usd',
-                        unit_amount: Math.round(total * 100),
+                        unit_amount: 200,
+                        // unit_amount: Math.round(total * 100),
                         product_data: {
                             name: 'payment'
                         },
@@ -619,30 +620,18 @@ export const createOrder = async (req: Request, res: Response) => {
                     quantity: 1,
                 },
             ],
-            success_url: `${req.headers.origin}/orders?clearCart=true`,
-            cancel_url: `${req.headers.origin}/checkout`,
+            success_url: `http://lochalhost:5173`,
+            // cancel_url: `${req.headers.origin}/checkout`,
 
             mode: 'payment',
             metadata: { orderId: order.id }
         });
-        return res.json({ url: session.url })
+        res.json({ url: session.url })
+        console.log(session)
     }
-    // res.json({ order })
-    // for (const item of orderItems) {
-    //     await prisma.product.update({
-    //         where: { id: item.product },
-    //         // data: {
-    //         //     stock: item.quantity
-    //         // }
-    //         data: { stock: { decrement: item.quantity } }
-    //     })
-    // }
-    // for (const item of orderItems) {
-    //     await inngest.send(
-    //         { name: 'inventory/stock.updated', data: { productId: item.product } })
-    // }
-    // await inngest.send({ name: 'order/placed', data: { orderId: order.id } })
-
+            } catch (error:any) {
+                res.json({success:false, message:error.message})   
+            }
 }
 export const getUserOrders = async (req: Request, res: Response) => {
     const { status } = req.query

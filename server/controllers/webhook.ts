@@ -24,44 +24,33 @@ export const stripeWebhooks = async (request: Request, response: Response) => {
         }
 
         // Handle the event
-        switch (event.type) {
-            case 'payment_intent.succeeded':
-                const paymentIntent = event.data.object as Stripe.PaymentIntent;
-                const paymentIntentId = paymentIntent.id
-                const session = await stripe.checkout.sessions.list({
-                    payment_intent: paymentIntentId
-                })
-                const { orderId } = session.data[0].metadata as any
-                const paidOrder = await prisma.order.update({
-                    where: { id: orderId },
-                    data: { isPaid: true }
-                })
-                const orderItems = (Array.isArray(paidOrder.items)) ? paidOrder.items : [] as any[]
-                for (const item of orderItems) {
-                    await prisma.product.update({
-                        where: { id: item.product },
-                        // data: {
-                        //     stock: item.quantity
-                        // }
-                        data: { stock: { decrement: item.quantity } }
-                    })
+        try {
+            switch (event.type) {
+                case 'payment_intent.succeeded': {
+
+                    break;
                 }
-                if (paidOrder) {
-                    await inngest.send({ name: 'order/placed', data: { orderId } })
-                }
-                for (const item of orderItems) {
-                    await inngest.send({ name: 'inventory/stock.updated', data: { productId: item.product } })
-                }
-                break;
-           
-            default:
+                default:
+            }
                 console.log(`Unhandled event type ${event.type}`);
+        response.json({ received: true });            
+        } catch (error) {
+                console.error('webhook processing error', error)
+        response.status(500).send('internal server error')
         }
 
-        // Return a response to acknowledge receipt of the event
-        response.json({ received: true });
     }
 }
+
+
+
+
+
+
+
+
+
+
 // import { Request, Response } from "express";
 // import Stripe from 'stripe'
 // import { prisma } from "../config/prisma.js";
