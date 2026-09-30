@@ -587,6 +587,7 @@ export const createOrder = async (req: Request, res: Response) => {
     })
     const subtotal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0)
     console.log(subtotal)
+    console.log(process.env.USER_ID, 'process.env.USER_ID')
     const deliveryFee = subtotal > 20 ? 0 : 1.99
     const tax = Math.round(subtotal * 0.08 * 100) / 100
     const total = Math.round((subtotal + deliveryFee + tax) * 100) / 100
@@ -606,46 +607,47 @@ export const createOrder = async (req: Request, res: Response) => {
     if (paymentMethod === 'card') {
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
         const session = await stripe.checkout.sessions.create({
-            success_url: `${req.headers.origin}/orders?clearCart=true`,
-            cancel_url: `${req.headers.origin}/checkout`,
-            line_items: [
+                        line_items: [
                 {
                     price_data: {
                         currency: 'usd',
+                        unit_amount: Math.round(total * 100),
                         product_data: {
-                            name: 'payment groceries'
+                            name: 'payment'
                         },
-                        unit_amount: Math.round(total * 100)
                     },
                     quantity: 1,
                 },
             ],
+            success_url: `${req.headers.origin}/orders?clearCart=true`,
+            cancel_url: `${req.headers.origin}/checkout`,
+
             mode: 'payment',
             metadata: { orderId: order.id }
         });
         return res.json({ url: session.url })
     }
-    res.json({ order })
-    for (const item of orderItems) {
-        await prisma.product.update({
-            where: { id: item.product },
-            // data: {
-            //     stock: item.quantity
-            // }
-            data: { stock: { decrement: item.quantity } }
-        })
-    }
-    for (const item of orderItems) {
-        await inngest.send(
-            { name: 'inventory/stock.updated', data: { productId: item.product } })
-    }
-    await inngest.send({ name: 'order/placed', data: { orderId: order.id } })
+    // res.json({ order })
+    // for (const item of orderItems) {
+    //     await prisma.product.update({
+    //         where: { id: item.product },
+    //         // data: {
+    //         //     stock: item.quantity
+    //         // }
+    //         data: { stock: { decrement: item.quantity } }
+    //     })
+    // }
+    // for (const item of orderItems) {
+    //     await inngest.send(
+    //         { name: 'inventory/stock.updated', data: { productId: item.product } })
+    // }
+    // await inngest.send({ name: 'order/placed', data: { orderId: order.id } })
 
 }
 export const getUserOrders = async (req: Request, res: Response) => {
     const { status } = req.query
     const where: any = {
-        userId: req.user!.id,
+        userId: process.env.USER_ID,
         NOT: [{ paymentMethod: 'card', isPaid: false }]
     }
     if (status && status !== 'all') {
